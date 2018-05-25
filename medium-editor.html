@@ -1,7 +1,8 @@
-<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../polymer/polymer-element.html">
 
 <link rel="import" href="medium-editor-script.html">
 <link rel="import" href="medium-editor-md-script.html">
+<link rel="import" href="medium-editor-styles.html">
 
 <!--
 `medium-editor`
@@ -46,9 +47,7 @@ Custom property | Description | Default
 
 <dom-module id="medium-editor">
     <template>
-        <link rel="stylesheet" href="../medium-editor/dist/css/medium-editor.css">
-        <link rel="stylesheet" href="../medium-editor/dist/css/themes/default.css">
-        <style>
+        <style is="custom-style" include="medium-editor-styles">
             :host {
                 display: block;
                 width: 100%;
@@ -71,13 +70,16 @@ Custom property | Description | Default
     </template>
 
     <script>
-      Polymer({
+      class MediumEditorElement extends Polymer.Element {
 
-        is: 'medium-editor',
+        static get is() { return 'medium-editor'; }
 
-        properties: {
+        static get properties() { return {
           /**
            * Instance of MediumEditor class
+           *
+           * @element medium-editor
+           * @demo demo/index.html
            */
           editor: {
             type: Object,
@@ -118,63 +120,78 @@ Custom property | Description | Default
             notify: true,
             readOnly: true
           }
-        },
+        };
+        }
 
-        ready: function () {
-          this._reinitializeEditor()
-        },
+        ready() {
+          super.ready();
+          this._reinitializeEditor();
+        }
 
-        _reinitializeEditor: function () {
+        _setEditor(editor) {
+          this.editor = editor;
+        }
+
+        _reinitializeEditor() {
           if (this.editor) {
-            this.editor.destroy()
-            this._setEditor(null)
+            this.editor.destroy();
+            this._setEditor(null);
           }
 
-          this._setEditor(new MediumEditor(this.$.editor, this._buildOptions()))
-          this.editor.subscribe('editableInput', this._handleEditableInput.bind(this))
-        },
+          const editor =  new MediumEditor(this.$.editor, this._buildOptions());
+          editor.subscribe('editableInput', this._handleEditableInput.bind(this))
+          this.set('editor', editor);
+        }
 
-        _buildOptions: function () {
-          var options = {}
+        _buildOptions() {
+          let options = {
+            elementsContainer: this,
+            contentWindow: this,
+            toolbar: {
+              'static': true,
+              sticky: true
+            }
+          };
 
           if (this.placeholderText || this.placeholderHide) {
-            var placeholderOptions = {}
+            let placeholderOptions = {};
 
             if (this.placeholderText) {
-              placeholderOptions[ 'text' ] = this.placeholderText
+              placeholderOptions[ 'text' ] = this.placeholderText;
             }
 
             if (this.placeholderHide) {
-              placeholderOptions[ 'hideOnClick' ] = this.placeholderHide
+              placeholderOptions[ 'hideOnClick' ] = this.placeholderHide;
             }
 
-            options[ 'placeholder' ] = placeholderOptions
+            options[ 'placeholder' ] = placeholderOptions;
           }
 
-          var extensions = options[ 'extensions' ] = {}
+          let extensions = options['extensions'] = {};
 
           switch (this.output) {
             case 'markdown': {
               extensions[ 'markdown' ] = new MeMarkdown(function (markdown) {
-                this._handleOutput(markdown)
-              }.bind(this))
+                this._handleOutput(markdown);
+              }.bind(this));
             }
           }
 
           return options
-        },
-
-        _handleEditableInput: function (event, editable) {
-          if (this.output === 'html') {
-            this._handleOutput(editable.textContent)
-          }
-        },
-
-        _handleOutput: function (newValue) {
-          console.log('_handleOutput', newValue)
-          this._setValue(newValue)
         }
 
-      });
+        _handleEditableInput(event, editable) {
+          if (this.output === 'html') {
+            this._handleOutput(editable.textContent);
+          }
+        }
+
+        _handleOutput(newValue) {
+          console.log('_handleOutput', newValue);
+          this.set('value', newValue);
+        }
+
+      }
+      window.customElements.define(MediumEditorElement.is, MediumEditorElement);
     </script>
 </dom-module>
